@@ -1,0 +1,108 @@
+name: ViaOps CI
+on:
+  push:
+  workflow_dispatch:
+ 
+env:
+  NAMESPACE_PREFIX   : "webapi-template"
+  SQUAD_NAME         : "Plataforma"
+  PROJECT_NAME       : "template-webapi"
+  APPLICATION_NAMES  : "template-webapi"
+  DOTNET_CLI_HOME    : "/tmp/DOTNET_CLI_HOME"
+  # SERVICE_NOW_CI     : "*******************"
+  # DEPLOYMENT_STRATEGY: "aks"
+  # SOURCE_REGISTRY    : "harbor01.viavarejo.com.br"
+  # HARBOR_PROJECT_NAME: "*******************"
+  PRD_DEPLOY_TIME    : "00:00"
+
+jobs:
+  pipeline:
+    name: ViaOps CI
+    runs-on: self-hosted
+    steps:
+ 
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+ 
+    - name: Checkout Convair Actions
+      uses: actions/checkout@v2
+      with:
+        repository: viavarejo-internal/convair-actions
+        token: ${{ secrets.ACTIONS_TOKEN }}
+        path: ./.convair-actions
+        ref: main
+
+    - name: Define Branch Type
+      uses: ./.convair-actions/define-type
+
+    - name: Get Vault Secrets
+      uses: ./.convair-actions/get-vault-secrets
+      with:
+        convair-client-id: ${{ secrets.CONVAIR_DELINEA_CLIENT_ID }}
+        convair-secret-id: ${{ secrets.CONVAIR_DELINEA_SECRET_ID }}
+
+    #- name: Check Up-To-Date
+    #  uses: ./.convair-actions/check-up-to-date
+    #  with:
+    #    token: ${{ secrets.VIAOPS_CI_AUTH }}
+
+    - name: .NetCore Build
+      uses: ./.convair-actions/netcore-build
+      with:
+        image: mcr.microsoft.com/dotnet/sdk:6.0
+        srcPath: src
+        projectNames: Template.Application;Template.Domain;Template.Infrastructure;Template.Contracts;Template.WebApi
+        nugetConfig: ./nuget.config
+        nugetRegistryUser: ${{ env.CONVAIRCI_NEXUS_USERNAME }}
+        nugetRegistryPass: ${{ env.CONVAIRCI_NEXUS_PASSWORD }}
+
+    #- name: Kustomize Lint
+    #  uses: ./.convair-actions/kustomize-lint
+
+    #- name: .NetCore Sonar
+    #  uses: ./.convair-actions/netcore-sonar
+    #  with:
+    #    solutionFile: dotnet-webapi-template.sln
+    #    sonarUrl: https://sonarcloud.io
+    #    sonarLoginToken: ${{ env.CONVAIRCI_SONARCLOUD_TOKEN }}
+    #    sonarProjectName: viavarejo-internal_dotnet-webapi-template
+    #    sonarOrganization: viavarejo-internal
+    #    scannerVersion: 5.8.0
+    #    srcPath: tests
+    #    projectNames: Template.CleanArchitectureValidationTests;Template.FunctionalTests;Template.IntegrationTests;Template.UnitTests
+    #    image: harbor01.viavarejo.com.br/viaops-ci/netcore-java:6.0-jdk11
+    #    nugetConfig: ./nuget.config
+    #    nugetRegistryUser: ${{ env.CONVAIRCI_NEXUS_USERNAME }}
+    #    nugetRegistryPass: ${{ env.CONVAIRCI_NEXUS_PASSWORD }}
+
+    #- name: Quality Gate
+    #  uses: ./.convair-actions/quality-gate
+    #  with:
+    #    sonarUrl: https://sonarcloud.io
+    #    sonarLoginToken: ${{ env.CONVAIRCI_SONARCLOUD_TOKEN }}
+
+    #- name: Build and Push to Harbor
+    #  uses: ./.convair-actions/build-and-push
+    #  with:
+    #    project: ${{ env.HARBOR_PROJECT_NAME }}
+    #    registryUsername: ${{ env.CONVAIRCI_DOCKER_USERNAME }}
+    #    registryPassword: ${{ env.CONVAIRCI_DOCKER_PASSWORD }}
+    #    dockerfile: ./dockerfile
+    #    buildArgs: |-
+    #      --build-arg USERNAME=${{ env.CONVAIRCI_NEXUS_USERNAME }}
+    #      --build-arg PASSWORD=${{ env.CONVAIRCI_NEXUS_PASSWORD }}
+
+    #- name: Create Git Version
+    #  uses: ./.convair-actions/git-version
+    #  with:
+    #    token: ${{ secrets.VIAOPS_CI_AUTH }}
+ 
+    #- name: XLRelease Start
+    #  uses: ./.convair-actions/xl-release-start
+    #  with:
+    #    tool: kustomize
+    #    xl-release-username: ${{ env.CONVAIRCI_DEFAULT_XL_RELEASE_USERNAME }}
+    #    xl-release-password: ${{ env.CONVAIRCI_DEFAULT_XL_RELEASE_PASSWORD }}
